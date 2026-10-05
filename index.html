@@ -1,849 +1,962 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Print Job Quote Calculator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>QuoteCraft Pro — Precision 3D Print Quoting & Unit Economics</title>
+  
+  <!-- Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
           },
           colors: {
-            brand: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-              accent: '#0284c7',
+            surface: {
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              800: '#111827',
+              850: '#0d131f',
+              900: '#080c14',
+              950: '#04070d',
+            },
+            accent: {
+              cyan: '#06b6d4',
+              emerald: '#10b981',
+              amber: '#f59e0b',
+              violet: '#8b5cf6',
             }
+          },
+          boxShadow: {
+            'glow-cyan': '0 0 35px -5px rgba(6, 182, 212, 0.25)',
+            'glow-emerald': '0 0 35px -5px rgba(16, 185, 129, 0.25)',
+            'card-dark': '0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.07)',
           }
         }
       }
     };
   </script>
+
   <style>
-    /* Custom scrollbar and subtle accents */
+    /* Glassmorphism subtle backdrop */
+    .glass-card {
+      background: rgba(13, 19, 31, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .light .glass-card {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    /* Range slider custom thumb */
     input[type=range] {
-      accent-color: #16a34a;
-    }
-    .custom-scroll::-webkit-scrollbar {
-      width: 6px;
+      -webkit-appearance: none;
       height: 6px;
-    }
-    .custom-scroll::-webkit-scrollbar-thumb {
-      background-color: rgba(156, 163, 175, 0.4);
       border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      transition: background 0.2s;
+    }
+    .light input[type=range] {
+      background: #e2e8f0;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #06b6d4;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+      border: 2px solid #ffffff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      box-shadow: 0 0 14px rgba(6, 182, 212, 0.9);
+    }
+
+    /* Remove number spin buttons for sleek custom look */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+
+    /* Print styles for PDF / Invoicing */
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .glass-card {
+        border: 1px solid #cccccc !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+      }
     }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen transition-colors duration-200 font-sans selection:bg-emerald-500 selection:text-white">
 
-  <header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold text-xl">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+<body class="bg-surface-950 text-slate-200 antialiased min-h-screen selection:bg-cyan-500 selection:text-black">
+  <!-- Top Ambient Glow -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-3/4 max-w-5xl h-48 bg-gradient-to-b from-cyan-500/10 via-emerald-500/5 to-transparent blur-3xl pointer-events-none z-0"></div>
+
+  <header class="relative z-20 border-b border-white/[0.07] bg-surface-900/70 backdrop-blur-xl sticky top-0">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-surface-950 font-extrabold text-lg">
+          <svg class="w-5 h-5 text-surface-950" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
           </svg>
         </div>
         <div>
-          <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-            QuoteForge <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-800">3D Pro</span>
-          </h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Professional Maker & Studio Job Pricing</p>
+          <div class="flex items-center gap-2">
+            <h1 class="font-bold tracking-tight text-white text-base">QuoteCraft <span class="text-cyan-400 font-mono text-xs px-1.5 py-0.5 rounded bg-cyan-950/70 border border-cyan-800/80">PRO</span></h1>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Live Quoting Engine
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-mono hidden sm:block">Deterministic Unit Economics & Commercial Pricing</p>
         </div>
       </div>
 
-      <!-- Quick Preset & Global Settings Bar -->
-      <div class="flex items-center flex-wrap gap-2.5">
-        <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-medium">
-          <button id="preset-snapmaker" onclick="loadPreset('snapmaker')" class="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white transition">Snapmaker U1</button>
-          <button id="preset-proto" onclick="loadPreset('proto')" class="px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Fast Draft</button>
-          <button id="preset-engineering" onclick="loadPreset('engineering')" class="px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Tech/PETG-CF</button>
-          <button id="preset-batch" onclick="loadPreset('batch')" class="px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Batch Run (10x)</button>
+      <!-- Header Controls: Currency, Printer Profiles, Theme -->
+      <div class="flex items-center space-x-2.5">
+        <!-- Machine Profile Quick Switcher -->
+        <div class="hidden md:flex items-center bg-surface-850 border border-white/[0.08] rounded-xl px-2 py-1 text-xs">
+          <span class="text-slate-400 font-mono mr-2">Printer:</span>
+          <select id="printer-profile" onchange="applyPrinterProfile(this.value)" class="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer">
+            <option value="snapmaker-u1" class="bg-surface-900" selected>Snapmaker U1 (High Speed CoreXY)</option>
+            <option value="bambu-x1c" class="bg-surface-900">Bambu Lab X1-Carbon</option>
+            <option value="prusa-mk4" class="bg-surface-900">Prusa MK4S (Direct Drive)</option>
+            <option value="voron-24" class="bg-surface-900">Voron 2.4 Custom</option>
+          </select>
         </div>
-
-        <div class="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
 
         <!-- Currency Selector -->
-        <select id="currency-select" onchange="updateCalculations()" class="bg-slate-100 dark:bg-slate-800 border-none text-xs rounded-xl px-2.5 py-1.5 font-semibold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 cursor-pointer">
-          <option value="R" selected>ZAR (R)</option>
-          <option value="$">USD ($)</option>
-          <option value="€">EUR (€)</option>
-          <option value="£">GBP (£)</option>
-          <option value="A$">AUD (A$)</option>
-        </select>
+        <div class="bg-surface-850 border border-white/[0.08] rounded-xl px-2.5 py-1 flex items-center">
+          <label for="currency-symbol" class="text-slate-400 text-xs font-mono mr-1.5">Cur:</label>
+          <select id="currency-symbol" onchange="updateAll()" class="bg-transparent text-slate-100 font-bold text-xs font-mono focus:outline-none cursor-pointer">
+            <option value="R" class="bg-surface-900" selected>ZAR (R)</option>
+            <option value="$" class="bg-surface-900">USD ($)</option>
+            <option value="€" class="bg-surface-900">EUR (€)</option>
+            <option value="£" class="bg-surface-900">GBP (£)</option>
+            <option value="A$" class="bg-surface-900">AUD (A$)</option>
+          </select>
+        </div>
 
-        <!-- Dark Mode Toggle -->
-        <button id="theme-toggle" onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" title="Toggle Dark/Light Mode">
-          <svg id="theme-icon-sun" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-          <svg id="theme-icon-moon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        <!-- Mode Toggle -->
+        <button onclick="toggleTheme()" class="w-8 h-8 rounded-xl bg-surface-850 border border-white/[0.08] flex items-center justify-center text-slate-400 hover:text-white transition" title="Toggle Light/Dark Theme">
+          <svg id="theme-moon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <svg id="theme-sun" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
         </button>
       </div>
+
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      
-      <!-- LEFT CONFIGURATION COLUMN (7 COLS) -->
-      <section class="lg:col-span-7 space-y-6">
+  <main class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7 space-y-7">
 
-        <!-- 1. Print & Filament Card -->
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-4">
+    <!-- Preset Selector Chips Bar -->
+    <div class="no-print flex items-center justify-between flex-wrap gap-3 bg-surface-900/50 p-2 rounded-2xl border border-white/[0.06]">
+      <div class="flex items-center space-x-2 text-xs font-medium overflow-x-auto py-1">
+        <span class="text-slate-400 font-mono text-[11px] uppercase tracking-wider pl-2 hidden sm:inline">Job Presets:</span>
+        <button onclick="loadJobPreset('snapmaker-default')" id="btn-preset-snapmaker" class="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold transition active:scale-95">Snapmaker U1 (Your Job)</button>
+        <button onclick="loadJobPreset('rapid-draft')" id="btn-preset-draft" class="px-3 py-1.5 rounded-xl bg-surface-850 hover:bg-surface-800 text-slate-300 border border-white/[0.08] transition active:scale-95">Rapid Draft (PLA)</button>
+        <button onclick="loadJobPreset('engineering-asa')" id="btn-preset-eng" class="px-3 py-1.5 rounded-xl bg-surface-850 hover:bg-surface-800 text-slate-300 border border-white/[0.08] transition active:scale-95">Engineering (ASA/PETG-CF)</button>
+        <button onclick="loadJobPreset('batch-production')" id="btn-preset-batch" class="px-3 py-1.5 rounded-xl bg-surface-850 hover:bg-surface-800 text-slate-300 border border-white/[0.08] transition active:scale-95">Volume Batch (10x)</button>
+      </div>
+      <div class="text-[11px] font-mono text-slate-400 pr-2 hidden md:block">
+        Calculations adhere to standard FabLab & Studio costing benchmarks
+      </div>
+    </div>
+
+    <!-- Main Grid: Configuration Panels (7 cols) + Hero Dashboard (5 cols) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
+      
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Card 1: Print & Consumable Material -->
+        <div class="glass-card rounded-2xl p-5 shadow-card-dark transition hover:border-white/[0.14]">
+          <div class="flex items-center justify-between pb-3.5 border-b border-white/[0.08] mb-4">
             <div class="flex items-center space-x-2.5">
-              <span class="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs">1</span>
-              <h2 class="font-semibold text-slate-900 dark:text-white text-sm uppercase tracking-wider">Print Time & Material</h2>
+              <span class="w-6 h-6 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center font-mono font-bold text-xs">01</span>
+              <h2 class="font-bold text-white text-sm tracking-wide uppercase">Print Runtime & Material</h2>
             </div>
-            <span class="text-xs text-slate-400 font-mono">Consumables</span>
+            <span class="text-[11px] font-mono text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-900/60" id="chip-part-runtime">1h 22m (1.37h)</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Print Time (Hours & Minutes) -->
+            
+            <!-- Runtime Steppers (Hours & Minutes) -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Print Duration (Per Unit)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Print Runtime (Per Part)</label>
               <div class="grid grid-cols-2 gap-2">
                 <div class="relative">
-                  <input type="number" id="print-hours" value="1" min="0" max="999" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8" oninput="updateCalculations()">
-                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">hrs</span>
+                  <input type="number" id="in-hours" value="1" min="0" max="999" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-cyan-500 focus:outline-none pr-8 font-mono" oninput="updateAll()">
+                  <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">hrs</span>
                 </div>
                 <div class="relative">
-                  <input type="number" id="print-mins" value="22" min="0" max="59" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-8" oninput="updateCalculations()">
-                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">min</span>
+                  <input type="number" id="in-mins" value="22" min="0" max="59" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-cyan-500 focus:outline-none pr-8 font-mono" oninput="updateAll()">
+                  <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">min</span>
                 </div>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1 font-mono" id="print-total-time-display">Total: 1h 22m (1.37 hrs)</p>
+              <p class="text-[11px] text-slate-400 mt-1 font-mono">From slicer job estimate (e.g. Orca / Snapmaker Luban)</p>
             </div>
 
-            <!-- Filament Weight -->
+            <!-- Filament Mass (Grams) -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Part Weight (Sliced Filament)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Sliced Filament Weight</label>
               <div class="relative">
-                <input type="number" id="filament-weight" value="36" min="1" step="0.5" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" oninput="updateCalculations()">
-                <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">grams</span>
+                <input type="number" id="in-grams" value="36" min="1" step="0.5" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-cyan-500 focus:outline-none pr-10 font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">g</span>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">Includes supports, rafts, and purge towers</p>
+              <p class="text-[11px] text-slate-400 mt-1 font-mono">Includes model + supports + purge line</p>
             </div>
 
-            <!-- Filament Cost / Kg -->
+            <!-- Filament Spool Cost -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Spool Cost per Kg</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Filament Spool Cost (Per Kg)</label>
               <div class="relative">
-                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono currency-symbol">R</span>
-                <input type="number" id="spool-cost" value="430" min="50" step="5" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
+                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono cur-label">R</span>
+                <input type="number" id="in-spool-cost" value="430" min="50" step="5" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl pl-8 pr-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-cyan-500 focus:outline-none font-mono" oninput="updateAll()">
               </div>
-              <p class="text-[11px] text-slate-400 mt-1 font-mono" id="raw-gram-rate-display">Base: R0.43 per gram</p>
+              <p class="text-[11px] text-slate-400 mt-1 font-mono" id="label-gram-cost">Base: R0.43 per gram</p>
             </div>
 
             <!-- Material Waste Buffer Slider -->
             <div>
               <div class="flex justify-between items-center mb-1.5">
-                <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Waste / Fail Buffer</label>
-                <span id="buffer-val-label" class="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">15%</span>
+                <label class="text-xs font-semibold text-slate-300">Failure & Purge Buffer</label>
+                <span id="label-buffer-pct" class="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-900/80">15%</span>
               </div>
-              <input type="range" id="buffer-percent" min="0" max="40" step="1" value="15" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer" oninput="updateBufferLabel(); updateCalculations();">
-              <p class="text-[11px] text-slate-400 mt-1">Protects against first-layer fails and purged filament</p>
+              <input type="range" id="in-buffer" min="0" max="35" step="1" value="15" class="w-full" oninput="updateAll()">
+              <p class="text-[11px] text-slate-400 mt-1">Absorbs bed calibration, poop chute & failed starts</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Card 2: Machine Wear & Electricity -->
+        <div class="glass-card rounded-2xl p-5 shadow-card-dark transition hover:border-white/[0.14]">
+          <div class="flex items-center justify-between pb-3.5 border-b border-white/[0.08] mb-4">
+            <div class="flex items-center space-x-2.5">
+              <span class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-mono font-bold text-xs">02</span>
+              <h2 class="font-bold text-white text-sm tracking-wide uppercase">Machine Depreciation & Energy</h2>
+            </div>
+            <span class="text-[11px] font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-900/60">Hardware & Grid</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Machine Rate / hr -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Machine Wear Rate</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono cur-label">R</span>
+                <input type="number" id="in-machine-rate" value="25" min="0" step="2" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl pl-8 pr-10 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">/h</span>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Nozzles, belts, PEI plates, depreciation</p>
+            </div>
+
+            <!-- Average Watts -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Avg Power Draw</label>
+              <div class="relative">
+                <input type="number" id="in-watts" value="135" min="20" max="1000" step="5" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none pr-8 font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">W</span>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Snapmaker U1 bed heating & toolhead</p>
+            </div>
+
+            <!-- Electricity Tariff -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Electricity Tariff</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono cur-label">R</span>
+                <input type="number" id="in-kwh-rate" value="3.50" min="0" step="0.10" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl pl-8 pr-12 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none font-mono" oninput="updateAll()">
+                <span class="absolute right-2.5 top-2.5 text-[11px] text-slate-500 font-mono">/kWh</span>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Set to 0 if running on off-grid solar</p>
             </div>
           </div>
         </div>
 
-        <!-- 2. Machine & Operating Parameters Card -->
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-4">
+        <!-- Card 3: Labor, Prep & Finishing -->
+        <div class="glass-card rounded-2xl p-5 shadow-card-dark transition hover:border-white/[0.14]">
+          <div class="flex items-center justify-between pb-3.5 border-b border-white/[0.08] mb-4">
             <div class="flex items-center space-x-2.5">
-              <span class="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-950/70 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold text-xs">2</span>
-              <h2 class="font-semibold text-slate-900 dark:text-white text-sm uppercase tracking-wider">Machine Depreciation & Power</h2>
+              <span class="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-mono font-bold text-xs">03</span>
+              <h2 class="font-bold text-white text-sm tracking-wide uppercase">Active Labor & Handling</h2>
             </div>
-            <span class="text-xs text-slate-400 font-mono">Hardware</span>
+            <span class="text-[11px] font-mono text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/60">Operator Touch Time</span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Prep & Slicing Time -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Machine Hourly Operating Rate</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Prep & Slicing Time</label>
               <div class="relative">
-                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono currency-symbol">R</span>
-                <input type="number" id="machine-rate" value="30" min="0" step="2" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-12 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
-                <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">/ hr</span>
+                <input type="number" id="in-prep-mins" value="8" min="0" max="180" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-amber-500 focus:outline-none pr-9 font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">min</span>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">Covers ~140W power, PEI sheets, nozzles & repairs</p>
+              <p class="text-[10px] text-slate-400 mt-1">Model orientation, supports, build plate cleaning</p>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-center">
-              <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Machine Cost for This Part</span>
-              <div class="flex items-baseline space-x-1.5 mt-1">
-                <span id="machine-subtotal-badge" class="text-lg font-bold font-mono text-slate-800 dark:text-slate-100">R41.00</span>
-                <span class="text-[11px] text-slate-400 font-normal">calculated</span>
+            <!-- Post Processing / Support Removal -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Finishing & Post-Process</label>
+              <div class="relative">
+                <input type="number" id="in-post-mins" value="7" min="0" max="300" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-amber-500 focus:outline-none pr-9 font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">min</span>
               </div>
-              <p class="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Snapmaker U1 rated for 24/7 reliability</p>
+              <p class="text-[10px] text-slate-400 mt-1">Harvesting, deburring, heat-set inserts, packing</p>
+            </div>
+
+            <!-- Hourly Labor Rate -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Labor Hourly Rate</label>
+              <div class="relative">
+                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono cur-label">R</span>
+                <input type="number" id="in-labor-rate" value="250" min="0" step="10" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl pl-8 pr-10 py-2 text-sm font-semibold text-white focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono" oninput="updateAll()">
+                <span class="absolute right-3 top-2.5 text-xs text-slate-500 font-mono">/h</span>
+              </div>
+              <p class="text-[10px] text-slate-400 mt-1">Your billable workshop rate (R200 - R350/hr)</p>
             </div>
           </div>
         </div>
 
-        <!-- 3. Hands-on Labor, Setup & CAD -->
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-4">
+        <!-- Card 4: Batch Scaling, Markup & Order Safeguards -->
+        <div class="glass-card rounded-2xl p-5 shadow-card-dark transition hover:border-white/[0.14]">
+          <div class="flex items-center justify-between pb-3.5 border-b border-white/[0.08] mb-4">
             <div class="flex items-center space-x-2.5">
-              <span class="w-7 h-7 rounded-lg bg-sky-100 dark:bg-sky-950/70 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold text-xs">3</span>
-              <h2 class="font-semibold text-slate-900 dark:text-white text-sm uppercase tracking-wider">Labor, Prep & Slicing</h2>
+              <span class="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-400 border border-violet-500/20 flex items-center justify-center font-mono font-bold text-xs">04</span>
+              <h2 class="font-bold text-white text-sm tracking-wide uppercase">Commercial Settings & Margins</h2>
             </div>
-            <span class="text-xs text-slate-400 font-mono">Expertise</span>
+            <span class="text-[11px] font-mono text-violet-400 bg-violet-950/40 px-2 py-0.5 rounded border border-violet-900/60">Profitability</span>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Hands on labor time -->
+            
+            <!-- Quantity Batch Stepper -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Hands-on Touch Time (Prep & Cleanup)</label>
-              <div class="relative">
-                <input type="number" id="labor-minutes" value="15" min="0" max="300" step="1" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-12" oninput="updateCalculations()">
-                <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">mins</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-1">Bed prep, harvest, deburring, support removal</p>
-            </div>
-
-            <!-- Labor Rate / Hour -->
-            <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Workshop Labor Rate</label>
-              <div class="relative">
-                <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono currency-symbol">R</span>
-                <input type="number" id="labor-rate" value="250" min="0" step="10" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-12 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
-                <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">/ hr</span>
-              </div>
-              <p class="text-[11px] text-slate-400 mt-1">Standard maker tech rate: R200 - R350/hr</p>
-            </div>
-
-            <!-- CAD / Slicing Fee Toggle & Input -->
-            <div class="sm:col-span-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <svg class="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
-                  Custom CAD / File Repair / Engineering Service (Optional)
-                </label>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="relative">
-                  <input type="number" id="cad-hours" value="0" min="0" max="100" step="0.25" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none pr-10" oninput="updateCalculations()">
-                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">hours</span>
-                </div>
-                <div class="relative">
-                  <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-mono currency-symbol">R</span>
-                  <input type="number" id="cad-rate" value="450" min="0" step="25" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-12 py-2 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
-                  <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">/ hr</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4. Commercial & Batch Settings Card -->
-        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-          <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/80 mb-4">
-            <div class="flex items-center space-x-2.5">
-              <span class="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold text-xs">4</span>
-              <h2 class="font-semibold text-slate-900 dark:text-white text-sm uppercase tracking-wider">Commercial & Batch Scaling</h2>
-            </div>
-            <span class="text-xs text-slate-400 font-mono">Margins</span>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <!-- Batch Quantity -->
-            <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Batch Quantity (Units)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Batch Quantity (Units to Print)</label>
               <div class="flex items-center space-x-2">
-                <button onclick="adjustQuantity(-1)" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition">-</button>
-                <input type="number" id="batch-quantity" value="1" min="1" max="1000" class="w-full text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 text-sm font-bold font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
-                <button onclick="adjustQuantity(1)" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition">+</button>
+                <button type="button" onclick="stepBatch(-1)" class="w-10 h-10 rounded-xl bg-surface-900 border border-white/[0.1] text-white hover:bg-surface-800 active:scale-95 font-bold transition flex items-center justify-center">-</button>
+                <input type="number" id="in-batch-qty" value="1" min="1" max="1000" class="w-full text-center bg-surface-900/90 border border-white/[0.1] rounded-xl py-2 text-base font-bold text-white font-mono focus:ring-1 focus:ring-violet-500 focus:outline-none" oninput="updateAll()">
+                <button type="button" onclick="stepBatch(1)" class="w-10 h-10 rounded-xl bg-surface-900 border border-white/[0.1] text-white hover:bg-surface-800 active:scale-95 font-bold transition flex items-center justify-center">+</button>
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">Identical parts in this print run</p>
+              <p class="text-[11px] text-slate-400 mt-1">Multi-item jobs distribute prep/slicing overhead</p>
             </div>
 
-            <!-- Labor Distribution Strategy -->
+            <!-- Setup Distribution Model -->
             <div>
-              <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Setup / Slicing Distribution</label>
-              <select id="labor-distribution" onchange="updateCalculations()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none">
-                <option value="split" selected>Split Setup/Slicing across batch (Volume discount)</option>
-                <option value="per-unit">Charge full labor per unit (Individual handling)</option>
+              <label class="block text-xs font-semibold text-slate-300 mb-1.5">Prep/Slicing Allocation</label>
+              <select id="in-labor-distribution" onchange="updateAll()" class="w-full bg-surface-900/90 border border-white/[0.1] rounded-xl px-3 py-2.5 text-xs font-semibold text-white focus:ring-1 focus:ring-violet-500 focus:outline-none cursor-pointer">
+                <option value="split" selected>Amortize Setup Across Batch (Batch discount)</option>
+                <option value="per-unit">Charge Full Setup Per Unit (Handcrafted each)</option>
               </select>
-              <p class="text-[11px] text-slate-400 mt-1">Slicing once saves time on multi-part runs</p>
+              <p class="text-[11px] text-slate-400 mt-1">Recommended for volume orders to stay competitive</p>
             </div>
 
-            <!-- Profit Markup Slider -->
-            <div class="sm:col-span-2 pt-2">
+            <!-- Profit Margin Slider -->
+            <div class="sm:col-span-2 pt-2 border-t border-white/[0.06]">
               <div class="flex justify-between items-center mb-1.5">
-                <label class="text-xs font-medium text-slate-600 dark:text-slate-400">Target Profit Markup</label>
-                <span id="margin-val-label" class="text-xs font-mono font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-md">35%</span>
+                <label class="text-xs font-semibold text-slate-300">Target Profit Markup (Over Total Cost)</label>
+                <span id="label-margin-pct" class="text-xs font-mono font-bold text-violet-400 bg-violet-950/60 px-2 py-0.5 rounded border border-violet-900/80">35%</span>
               </div>
-              <input type="range" id="profit-margin" min="10" max="150" step="5" value="35" class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer" oninput="updateMarginLabel(); updateCalculations();">
-              <div class="flex justify-between text-[10px] text-slate-400 mt-1">
-                <span>10% (Subcontractor)</span>
-                <span>35% (Standard Studio)</span>
-                <span>70%+ (Rapid Turnaround / High Risk)</span>
+              <input type="range" id="in-margin" min="10" max="80" step="1" value="35" class="w-full" oninput="updateAll()">
+              <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+                <span>15% (Low / Subcontract)</span>
+                <span>35% (Studio Standard)</span>
+                <span>60%+ (Turnaround / Custom Design)</span>
               </div>
             </div>
 
-            <!-- Minimum Order Fee Threshold -->
-            <div class="sm:col-span-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+            <!-- Minimum Order Floor -->
+            <div class="sm:col-span-2 flex items-center justify-between p-3.5 rounded-xl bg-surface-900/60 border border-white/[0.06]">
               <div>
-                <label class="text-xs font-semibold text-slate-800 dark:text-slate-200 block">Enforce Minimum Job Fee</label>
-                <span class="text-[11px] text-slate-500 dark:text-slate-400">Ensures short jobs remain profitable after invoicing & admin</span>
+                <label class="text-xs font-semibold text-white block">Minimum Job Fee Guarantee</label>
+                <span class="text-[11px] text-slate-400">Prevents losing money on micro-prints due to billing & handling admin</span>
               </div>
               <div class="flex items-center space-x-2">
-                <span class="text-xs font-mono currency-symbol text-slate-400">R</span>
-                <input type="number" id="min-fee" value="150" min="0" step="10" class="w-24 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 text-sm font-semibold text-right focus:ring-2 focus:ring-emerald-500 focus:outline-none" oninput="updateCalculations()">
+                <span class="text-xs font-mono cur-label text-slate-400">R</span>
+                <input type="number" id="in-min-floor" value="120" min="0" step="10" class="w-24 bg-surface-950 border border-white/[0.1] rounded-lg px-2 py-1 text-sm font-bold text-right text-white font-mono focus:ring-1 focus:ring-violet-500 focus:outline-none" oninput="updateAll()">
               </div>
             </div>
+
           </div>
         </div>
-      </section>
 
-      <!-- RIGHT QUOTE SUMMARY COLUMN (5 COLS) -->
-      <section class="lg:col-span-5 sticky top-20 space-y-5">
-        <div class="bg-gradient-to-b from-slate-900 to-slate-950 text-white rounded-3xl p-6 shadow-xl border border-slate-800 relative overflow-hidden">
-          <!-- Background Glow Effect -->
-          <div class="absolute -top-24 -right-24 w-52 h-52 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      </div>
 
-          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
-            <span class="text-xs uppercase tracking-wider font-semibold text-emerald-400 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live Quote Estimate
+      <!-- RIGHT SUMMARY COLUMN (5 cols) -->
+      <div class="lg:col-span-5 sticky top-20 space-y-5">
+        
+        <!-- Hero Quote Panel -->
+        <div class="glass-card rounded-3xl p-6 shadow-glow-cyan border border-cyan-500/30 relative overflow-hidden">
+          
+          <!-- Subtle corner accent aura -->
+          <div class="absolute -right-16 -top-16 w-44 h-44 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div class="flex items-center justify-between border-b border-white/[0.08] pb-3 mb-5">
+            <span class="text-[11px] font-mono tracking-widest uppercase font-bold text-cyan-400 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></span>
+              Client Quote Summary
             </span>
-            <span id="badge-batch-summary" class="text-xs font-mono bg-slate-800 text-slate-300 px-2 py-0.5 rounded-full border border-slate-700">1 Unit</span>
+            <span id="badge-batch-counter" class="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full bg-surface-900 text-slate-300 border border-white/[0.08]">1 Unit</span>
           </div>
 
-          <!-- Hero Price Highlight -->
-          <div class="my-5">
-            <div class="flex items-baseline justify-between">
-              <div>
-                <span class="text-xs text-slate-400 uppercase tracking-wider font-medium">Total Job Quote</span>
-                <div class="text-4xl font-extrabold font-mono text-emerald-400 tracking-tight mt-0.5" id="hero-total-price">
-                  R163.75
-                </div>
+          <!-- Hero Price Value -->
+          <div class="mb-6">
+            <div class="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Recommended Selling Price</div>
+            <div class="flex items-baseline justify-between mt-1">
+              <div class="text-4xl sm:text-5xl font-extrabold font-mono text-white tracking-tight" id="hero-total-price">
+                R158.50
               </div>
               <div class="text-right">
-                <span class="text-xs text-slate-400 uppercase tracking-wider font-medium">Per Unit Price</span>
-                <div class="text-xl font-bold font-mono text-white mt-0.5" id="hero-unit-price">
-                  R163.75
-                </div>
+                <span class="text-[10px] font-mono text-slate-400 block uppercase">Each</span>
+                <span class="text-lg font-bold font-mono text-cyan-300" id="hero-unit-price">R158.50</span>
               </div>
             </div>
+
+            <!-- Floor Warning Tag -->
+            <div id="alert-min-fee" class="hidden mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between font-medium">
+              <span class="flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                Minimum Job Fee Applied
+              </span>
+              <span class="font-mono font-bold" id="label-min-fee-badge">R120.00</span>
+            </div>
+          </div>
+
+          <!-- Cost Breakdown List & Interactive Visual Bar -->
+          <div class="space-y-3 pt-4 border-t border-white/[0.08] text-xs">
             
-            <div id="min-fee-banner" class="hidden mt-3 text-xs bg-amber-500/20 border border-amber-500/40 text-amber-300 px-3 py-1.5 rounded-xl flex items-center justify-between">
-              <span>⚠️ Minimum job fee applied</span>
-              <span class="font-mono font-bold" id="min-fee-val-tag">Min: R150</span>
+            <!-- Material -->
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-2 text-slate-300">
+                <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                Material (<span id="res-grams-total">36g</span> @ <span id="res-buffer-total">15%</span> buffer)
+              </span>
+              <span class="font-mono font-semibold text-white" id="val-mat-cost">R17.80</span>
+            </div>
+
+            <!-- Machine Depreciation -->
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-2 text-slate-300">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                Machine Depreciation (<span id="res-mach-hours">1.37h</span>)
+              </span>
+              <span class="font-mono font-semibold text-white" id="val-mach-cost">R34.25</span>
+            </div>
+
+            <!-- Electricity -->
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-2 text-slate-300">
+                <span class="w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+                Grid Power (<span id="res-power-kwh">0.18 kWh</span>)
+              </span>
+              <span class="font-mono font-semibold text-white" id="val-power-cost">R0.65</span>
+            </div>
+
+            <!-- Hands on labor -->
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-2 text-slate-300">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                Active Operator Labor (<span id="res-labor-total-mins">15m</span>)
+              </span>
+              <span class="font-mono font-semibold text-white" id="val-labor-cost">R62.50</span>
+            </div>
+
+            <!-- Total Cost of Goods (COGS) -->
+            <div class="flex justify-between items-center pt-2.5 border-t border-white/[0.08] text-slate-400 font-medium">
+              <span>Total Direct Production Cost (COGS)</span>
+              <span class="font-mono font-bold text-slate-200" id="val-cogs-cost">R115.20</span>
+            </div>
+
+            <!-- Net Markup -->
+            <div class="flex justify-between items-center text-emerald-400 font-medium">
+              <span>Gross Profit (<span id="res-markup-pct">35%</span> markup)</span>
+              <span class="font-mono font-bold" id="val-profit-cost">+R40.32</span>
             </div>
           </div>
 
-          <!-- Itemized Breakdown Cards -->
-          <div class="space-y-2.5 pt-2 border-t border-slate-800 text-xs">
-            <div class="flex justify-between items-center text-slate-300 py-1">
-              <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                Material (<span id="calc-grams-label">36g</span> + <span id="calc-buf-label">15%</span> buffer)
-              </span>
-              <span class="font-mono font-semibold text-white" id="row-material-cost">R17.80</span>
+          <!-- Color Proportion Progress Bar -->
+          <div class="mt-4 pt-4 border-t border-white/[0.08]">
+            <div class="flex justify-between text-[11px] font-mono text-slate-400 mb-1.5">
+              <span>Cost Components Ratio</span>
+              <span class="text-emerald-400 font-semibold" id="res-gross-margin-pct">Gross Margin: 27%</span>
             </div>
-
-            <div class="flex justify-between items-center text-slate-300 py-1">
-              <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
-                Machine Wear & Power (<span id="calc-runtime-label">1.37h</span> @ R30/h)
-              </span>
-              <span class="font-mono font-semibold text-white" id="row-machine-cost">R41.00</span>
-            </div>
-
-            <div class="flex justify-between items-center text-slate-300 py-1">
-              <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
-                Hands-on Labor (<span id="calc-labor-label">15m</span>)
-              </span>
-              <span class="font-mono font-semibold text-white" id="row-labor-cost">R62.50</span>
-            </div>
-
-            <div id="row-cad-wrapper" class="hidden flex justify-between items-center text-slate-300 py-1">
-              <span class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                CAD / Engineering Design (<span id="calc-cad-label">0h</span>)
-              </span>
-              <span class="font-mono font-semibold text-white" id="row-cad-cost">R0.00</span>
-            </div>
-
-            <div class="flex justify-between items-center pt-2.5 border-t border-slate-800 text-slate-400">
-              <span class="font-medium">Direct Production Cost (COGS)</span>
-              <span class="font-mono font-bold text-slate-200" id="row-cogs-cost">R121.30</span>
-            </div>
-
-            <div class="flex justify-between items-center text-emerald-400">
-              <span class="font-medium">Profit Margin (<span id="calc-markup-label">35%</span>)</span>
-              <span class="font-mono font-bold" id="row-profit-cost">+R42.46</span>
+            <div class="w-full h-2 rounded-full bg-surface-900 overflow-hidden flex shadow-inner">
+              <div id="bar-material" class="h-full bg-cyan-400 transition-all duration-300" style="width: 15%;" title="Material"></div>
+              <div id="bar-machine" class="h-full bg-emerald-400 transition-all duration-300" style="width: 25%;" title="Machine"></div>
+              <div id="bar-labor" class="h-full bg-amber-400 transition-all duration-300" style="width: 35%;" title="Labor"></div>
+              <div id="bar-profit" class="h-full bg-emerald-500 transition-all duration-300" style="width: 25%;" title="Profit"></div>
             </div>
           </div>
 
-          <!-- Profit Margin Gauge Bar -->
-          <div class="mt-4 pt-3 border-t border-slate-800/80">
-            <div class="flex justify-between text-[11px] text-slate-400 mb-1">
-              <span>Cost of Goods (COGS)</span>
-              <span class="text-emerald-400 font-semibold" id="ratio-margin-label">Profit: 26% of price</span>
+          <!-- Key Performance Cards Grid -->
+          <div class="mt-5 grid grid-cols-2 gap-2 text-center">
+            <div class="p-2.5 rounded-xl bg-surface-900/80 border border-white/[0.06]">
+              <span class="text-[10px] font-mono text-slate-400 block uppercase">Net Profit</span>
+              <span class="text-sm font-bold font-mono text-emerald-400" id="kpi-net-profit">R43.30</span>
             </div>
-            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
-              <div id="bar-cogs" class="h-full bg-slate-500 transition-all duration-300" style="width: 74%;"></div>
-              <div id="bar-margin" class="h-full bg-emerald-500 transition-all duration-300" style="width: 26%;"></div>
+            <div class="p-2.5 rounded-xl bg-surface-900/80 border border-white/[0.06]">
+              <span class="text-[10px] font-mono text-slate-400 block uppercase">Effective Return/hr</span>
+              <span class="text-sm font-bold font-mono text-cyan-300" id="kpi-effective-hourly">R385/h</span>
             </div>
           </div>
 
           <!-- Action Buttons -->
-          <div class="mt-6 grid grid-cols-2 gap-3">
-            <button onclick="copyQuoteForClient()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold py-2.5 px-3 rounded-xl transition flex items-center justify-center space-x-1.5 text-xs shadow-md shadow-emerald-500/20">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
-              <span id="copy-btn-text">Copy Client Quote</span>
+          <div class="mt-6 space-y-2.5 no-print">
+            <button onclick="copyQuoteToClipboard()" class="w-full bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-surface-950 font-bold py-3 px-4 rounded-xl transition flex items-center justify-center space-x-2 text-xs shadow-lg shadow-cyan-500/20 active:scale-[0.99]">
+              <svg class="w-4 h-4 text-surface-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span id="btn-copy-label">Copy Itemized Client Quote</span>
             </button>
-            <button onclick="shareWhatsApp()" class="w-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center space-x-1.5 text-xs border border-slate-700">
-              <svg class="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-              <span>WhatsApp Format</span>
-            </button>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="shareViaWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center space-x-1.5 text-xs active:scale-[0.99]">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                <span>WhatsApp</span>
+              </button>
+              
+              <button onclick="window.print()" class="w-full bg-surface-900 hover:bg-surface-850 active:bg-surface-800 text-slate-300 font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center space-x-1.5 text-xs border border-white/[0.08] active:scale-[0.99]">
+                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                <span>Print / PDF</span>
+              </button>
+            </div>
           </div>
+
         </div>
 
-        <!-- Practical Guidance Note -->
-        <div class="bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-4 text-xs text-emerald-900 dark:text-emerald-200">
-          <div class="font-semibold flex items-center gap-1.5 mb-1 text-emerald-800 dark:text-emerald-300">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Maker Tip: Scaling Batches
-          </div>
-          <p class="leading-relaxed">
-            When producing <span class="font-semibold">multi-item runs</span>, choose "Split Setup" to pass setup savings to clients while protecting your margin. If each part requires manual inserts or painting, toggle to "Full labor per unit".
-          </p>
-        </div>
-      </section>
+      </div>
 
     </div>
   </main>
 
-  <!-- Notification Toast Modal -->
-  <div id="toast" class="fixed bottom-6 right-6 transform translate-y-20 opacity-0 transition-all duration-300 z-50 bg-slate-900 text-white border border-slate-700 px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-none">
-    <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+  <div id="toast" class="fixed bottom-6 right-6 transform translate-y-24 opacity-0 transition-all duration-300 z-50 bg-surface-900 text-white border border-white/[0.15] px-4 py-3 rounded-2xl shadow-2xl flex items-center space-x-3 pointer-events-none">
+    <div class="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
     </div>
-    <span id="toast-message" class="text-xs font-semibold">Quote copied to clipboard!</span>
+    <span id="toast-text" class="text-xs font-semibold">Quote successfully copied to clipboard</span>
   </div>
 
-  <!-- Hidden text area for execCommand copy compatibility -->
-  <textarea id="hidden-copy-area" class="sr-only" aria-hidden="true"></textarea>
+  <textarea id="copy-scratchpad" class="sr-only" aria-hidden="true"></textarea>
 
   <script>
-    // State object for calculated results
-    let currentQuote = {
-      currency: 'R',
-      totalMaterial: 0,
-      totalMachine: 0,
-      totalLabor: 0,
-      totalCAD: 0,
-      totalCOGS: 0,
-      markupAmount: 0,
-      subtotalCalculated: 0,
-      finalJobPrice: 0,
-      unitPrice: 0,
-      quantity: 1,
-      minFeeTriggered: false
+    // State memory
+    let calculationResults = {};
+
+    // Machine Hardware Library
+    const PRINTER_PROFILES = {
+      'snapmaker-u1': {
+        name: 'Snapmaker U1',
+        machineRate: 25,
+        watts: 135
+      },
+      'bambu-x1c': {
+        name: 'Bambu Lab X1-Carbon',
+        machineRate: 35,
+        watts: 140
+      },
+      'prusa-mk4': {
+        name: 'Prusa MK4S',
+        machineRate: 20,
+        watts: 100
+      },
+      'voron-24': {
+        name: 'Voron 2.4 Custom',
+        machineRate: 30,
+        watts: 180
+      }
     };
 
-    // Preset configurations
-    const PRESETS = {
-      snapmaker: {
+    // Full Job Presets
+    const JOB_PRESETS = {
+      'snapmaker-default': {
         hours: 1,
         mins: 22,
-        weight: 36,
+        grams: 36,
         spoolCost: 430,
         buffer: 15,
-        machineRate: 30,
-        laborMins: 15,
+        machineRate: 25,
+        watts: 135,
+        kwhRate: 3.50,
+        prepMins: 8,
+        postMins: 7,
         laborRate: 250,
-        cadHours: 0,
-        cadRate: 450,
-        quantity: 1,
+        batchQty: 1,
+        distribution: 'split',
         margin: 35,
-        minFee: 150,
-        distribution: 'split'
+        minFloor: 120
       },
-      proto: {
+      'rapid-draft': {
         hours: 0,
         mins: 45,
-        weight: 18,
-        spoolCost: 380,
+        grams: 18,
+        spoolCost: 350,
         buffer: 10,
-        machineRate: 25,
-        laborMins: 8,
-        laborRate: 200,
-        cadHours: 0,
-        cadRate: 400,
-        quantity: 1,
+        machineRate: 20,
+        watts: 110,
+        kwhRate: 3.50,
+        prepMins: 5,
+        postMins: 3,
+        laborRate: 220,
+        batchQty: 1,
+        distribution: 'split',
         margin: 25,
-        minFee: 100,
-        distribution: 'split'
+        minFloor: 90
       },
-      engineering: {
-        hours: 4,
-        mins: 15,
-        weight: 85,
-        spoolCost: 850,
+      'engineering-asa': {
+        hours: 3,
+        mins: 40,
+        grams: 85,
+        spoolCost: 750,
         buffer: 20,
-        machineRate: 50,
-        laborMins: 30,
-        laborRate: 350,
-        cadHours: 1,
-        cadRate: 550,
-        quantity: 1,
+        machineRate: 45,
+        watts: 240,
+        kwhRate: 3.50,
+        prepMins: 15,
+        postMins: 20,
+        laborRate: 320,
+        batchQty: 1,
+        distribution: 'split',
         margin: 50,
-        minFee: 300,
-        distribution: 'split'
+        minFloor: 250
       },
-      batch: {
+      'batch-production': {
         hours: 1,
         mins: 22,
-        weight: 36,
+        grams: 36,
         spoolCost: 430,
         buffer: 12,
-        machineRate: 30,
-        laborMins: 45, // pooled batch finishing
+        machineRate: 25,
+        watts: 135,
+        kwhRate: 3.50,
+        prepMins: 15, // single pooled slicing
+        postMins: 30, // batch support removal
         laborRate: 250,
-        cadHours: 0,
-        cadRate: 450,
-        quantity: 10,
+        batchQty: 10,
+        distribution: 'split',
         margin: 35,
-        minFee: 150,
-        distribution: 'split'
+        minFloor: 120
       }
     };
 
-    function calculate() {
-      const currency = document.getElementById('currency-select').value;
-      const hours = Math.max(0, parseFloat(document.getElementById('print-hours').value) || 0);
-      const mins = Math.max(0, parseFloat(document.getElementById('print-mins').value) || 0);
-      const partHours = hours + (mins / 60);
-
-      const gramsPerUnit = Math.max(0, parseFloat(document.getElementById('filament-weight').value) || 0);
-      const spoolCost = Math.max(0, parseFloat(document.getElementById('spool-cost').value) || 0);
-      const bufferPercent = Math.max(0, parseFloat(document.getElementById('buffer-percent').value) || 0);
-
-      const machineRate = Math.max(0, parseFloat(document.getElementById('machine-rate').value) || 0);
-      const laborMinutes = Math.max(0, parseFloat(document.getElementById('labor-minutes').value) || 0);
-      const laborRate = Math.max(0, parseFloat(document.getElementById('labor-rate').value) || 0);
-
-      const cadHours = Math.max(0, parseFloat(document.getElementById('cad-hours').value) || 0);
-      const cadRate = Math.max(0, parseFloat(document.getElementById('cad-rate').value) || 0);
-
-      const quantity = Math.max(1, parseInt(document.getElementById('batch-quantity').value) || 1);
-      const laborDist = document.getElementById('labor-distribution').value;
-      const marginPercent = Math.max(0, parseFloat(document.getElementById('profit-margin').value) || 0);
-      const minFee = Math.max(0, parseFloat(document.getElementById('min-fee').value) || 0);
-
-      // Calculations:
-      // Material cost with failure buffer
-      const baseCostPerGram = spoolCost / 1000;
-      const materialPerUnit = (gramsPerUnit * baseCostPerGram) * (1 + (bufferPercent / 100));
-      const totalMaterial = materialPerUnit * quantity;
-
-      // Machine operating cost
-      const machinePerUnit = partHours * machineRate;
-      const totalMachine = machinePerUnit * quantity;
-
-      // Labor calculation based on distribution
-      let totalLabor = 0;
-      const totalTouchHours = laborMinutes / 60;
-      if (laborDist === 'split') {
-        // Labor entered is total for the batch setup/harvest
-        totalLabor = totalTouchHours * laborRate;
-      } else {
-        // Labor is repeated per unit
-        totalLabor = (totalTouchHours * laborRate) * quantity;
-      }
-
-      // CAD design cost (billed as a one-time project fee)
-      const totalCAD = cadHours * cadRate;
-
-      // Base Production Cost (COGS)
-      const totalCOGS = totalMaterial + totalMachine + totalLabor + totalCAD;
-
-      // Markup / Profit calculation
-      const markupMultiplier = marginPercent / 100;
-      const markupAmount = totalCOGS * markupMultiplier;
-      const subtotalCalculated = totalCOGS + markupAmount;
-
-      // Minimum Fee enforcement
-      let finalJobPrice = subtotalCalculated;
-      let minFeeTriggered = false;
-
-      if (finalJobPrice < minFee && minFee > 0) {
-        finalJobPrice = minFee;
-        minFeeTriggered = true;
-      }
-
-      const unitPrice = finalJobPrice / quantity;
-
-      currentQuote = {
-        currency,
-        hours,
-        mins,
-        partHours,
-        gramsPerUnit,
-        spoolCost,
-        bufferPercent,
-        machineRate,
-        laborMinutes,
-        laborRate,
-        cadHours,
-        cadRate,
-        quantity,
-        laborDist,
-        marginPercent,
-        minFee,
-        baseCostPerGram,
-        totalMaterial,
-        totalMachine,
-        totalLabor,
-        totalCAD,
-        totalCOGS,
-        markupAmount,
-        subtotalCalculated,
-        finalJobPrice,
-        unitPrice,
-        minFeeTriggered
-      };
-
-      renderResults();
+    function applyPrinterProfile(profileKey) {
+      const p = PRINTER_PROFILES[profileKey];
+      if (!p) return;
+      document.getElementById('in-machine-rate').value = p.machineRate;
+      document.getElementById('in-watts').value = p.watts;
+      updateAll();
+      showToast(`Applied ${p.name} power & wear rates`);
     }
 
-    function formatMoney(amount, currency = currentQuote.currency) {
-      return `${currency}${amount.toFixed(2)}`;
-    }
+    function loadJobPreset(presetKey) {
+      const cfg = JOB_PRESETS[presetKey];
+      if (!cfg) return;
 
-    function renderResults() {
-      const q = currentQuote;
+      document.getElementById('in-hours').value = cfg.hours;
+      document.getElementById('in-mins').value = cfg.mins;
+      document.getElementById('in-grams').value = cfg.grams;
+      document.getElementById('in-spool-cost').value = cfg.spoolCost;
+      document.getElementById('in-buffer').value = cfg.buffer;
+      document.getElementById('in-machine-rate').value = cfg.machineRate;
+      document.getElementById('in-watts').value = cfg.watts;
+      document.getElementById('in-kwh-rate').value = cfg.kwhRate;
+      document.getElementById('in-prep-mins').value = cfg.prepMins;
+      document.getElementById('in-post-mins').value = cfg.postMins;
+      document.getElementById('in-labor-rate').value = cfg.laborRate;
+      document.getElementById('in-batch-qty').value = cfg.batchQty;
+      document.getElementById('in-labor-distribution').value = cfg.distribution;
+      document.getElementById('in-margin').value = cfg.margin;
+      document.getElementById('in-min-floor').value = cfg.minFloor;
 
-      // Currency signs across inputs
-      document.querySelectorAll('.currency-symbol').forEach(el => {
-        el.textContent = q.currency;
+      // Update button highlights
+      ['btn-preset-snapmaker', 'btn-preset-draft', 'btn-preset-eng', 'btn-preset-batch'].forEach(id => {
+        const btn = document.getElementById(id);
+        btn.className = "px-3 py-1.5 rounded-xl bg-surface-850 hover:bg-surface-800 text-slate-300 border border-white/[0.08] transition active:scale-95";
       });
-
-      // Update Top helper displays
-      document.getElementById('print-total-time-display').textContent = `Total: ${q.hours}h ${q.mins}m (${q.partHours.toFixed(2)} hrs)`;
-      document.getElementById('raw-gram-rate-display').textContent = `Base: ${formatMoney(q.baseCostPerGram)} per gram`;
-      document.getElementById('machine-subtotal-badge').textContent = formatMoney(q.partHours * q.machineRate);
-
-      // Hero Prices
-      document.getElementById('hero-total-price').textContent = formatMoney(q.finalJobPrice);
-      document.getElementById('hero-unit-price').textContent = formatMoney(q.unitPrice);
-      document.getElementById('badge-batch-summary').textContent = `${q.quantity} ${q.quantity === 1 ? 'Unit' : 'Units'}`;
-
-      // Min Fee Alert
-      const minFeeBanner = document.getElementById('min-fee-banner');
-      if (q.minFeeTriggered) {
-        minFeeBanner.classList.remove('hidden');
-        document.getElementById('min-fee-val-tag').textContent = `Min: ${formatMoney(q.minFee)}`;
-      } else {
-        minFeeBanner.classList.add('hidden');
+      const activeId = presetKey === 'snapmaker-default' ? 'btn-preset-snapmaker'
+                     : presetKey === 'rapid-draft' ? 'btn-preset-draft'
+                     : presetKey === 'engineering-asa' ? 'btn-preset-eng' : 'btn-preset-batch';
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) {
+        activeBtn.className = "px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold transition active:scale-95";
       }
 
-      // Breakdown Lines
-      document.getElementById('calc-grams-label').textContent = `${(q.gramsPerUnit * q.quantity).toFixed(0)}g`;
-      document.getElementById('calc-buf-label').textContent = `${q.bufferPercent}%`;
-      document.getElementById('row-material-cost').textContent = formatMoney(q.totalMaterial);
-
-      document.getElementById('calc-runtime-label').textContent = `${(q.partHours * q.quantity).toFixed(2)}h`;
-      document.getElementById('row-machine-cost').textContent = formatMoney(q.totalMachine);
-
-      document.getElementById('calc-labor-label').textContent = q.laborDist === 'split' ? `${q.laborMinutes}m total` : `${q.laborMinutes}m/ea`;
-      document.getElementById('row-labor-cost').textContent = formatMoney(q.totalLabor);
-
-      const cadWrapper = document.getElementById('row-cad-wrapper');
-      if (q.cadHours > 0) {
-        cadWrapper.classList.remove('hidden');
-        document.getElementById('calc-cad-label').textContent = `${q.cadHours}h`;
-        document.getElementById('row-cad-cost').textContent = formatMoney(q.totalCAD);
-      } else {
-        cadWrapper.classList.add('hidden');
-      }
-
-      document.getElementById('row-cogs-cost').textContent = formatMoney(q.totalCOGS);
-      document.getElementById('calc-markup-label').textContent = `${q.marginPercent}%`;
-      document.getElementById('row-profit-cost').textContent = `+${formatMoney(q.markupAmount)}`;
-
-      // Visual COGS vs Margin Ratio
-      const cogsRatio = q.finalJobPrice > 0 ? (q.totalCOGS / q.finalJobPrice) * 100 : 70;
-      const profitRatio = Math.max(0, 100 - cogsRatio);
-      document.getElementById('bar-cogs').style.width = `${Math.min(100, cogsRatio)}%`;
-      document.getElementById('bar-margin').style.width = `${Math.min(100, profitRatio)}%`;
-      document.getElementById('ratio-margin-label').textContent = `Profit: ${profitRatio.toFixed(0)}% of quote`;
+      updateAll();
+      showToast(`Preset loaded`);
     }
 
-    function updateBufferLabel() {
-      const val = document.getElementById('buffer-percent').value;
-      document.getElementById('buffer-val-label').textContent = `${val}%`;
-    }
-
-    function updateMarginLabel() {
-      const val = document.getElementById('profit-margin').value;
-      document.getElementById('margin-val-label').textContent = `${val}%`;
-    }
-
-    function adjustQuantity(delta) {
-      const input = document.getElementById('batch-quantity');
+    function stepBatch(delta) {
+      const input = document.getElementById('in-batch-qty');
       let val = (parseInt(input.value) || 1) + delta;
       if (val < 1) val = 1;
       input.value = val;
-      updateCalculations();
+      updateAll();
     }
 
-    function updateCalculations() {
-      calculate();
+    function formatVal(amount, currency = calculationResults.currency || 'R') {
+      return `${currency}${amount.toFixed(2)}`;
     }
 
-    function loadPreset(key) {
-      const preset = PRESETS[key];
-      if (!preset) return;
+    function updateAll() {
+      const cur = document.getElementById('currency-symbol').value;
+      document.querySelectorAll('.cur-label').forEach(el => el.textContent = cur);
 
-      document.getElementById('print-hours').value = preset.hours;
-      document.getElementById('print-mins').value = preset.mins;
-      document.getElementById('filament-weight').value = preset.weight;
-      document.getElementById('spool-cost').value = preset.spoolCost;
-      document.getElementById('buffer-percent').value = preset.buffer;
-      document.getElementById('machine-rate').value = preset.machineRate;
-      document.getElementById('labor-minutes').value = preset.laborMins;
-      document.getElementById('labor-rate').value = preset.laborRate;
-      document.getElementById('cad-hours').value = preset.cadHours;
-      document.getElementById('cad-rate').value = preset.cadRate;
-      document.getElementById('batch-quantity').value = preset.quantity;
-      document.getElementById('profit-margin').value = preset.margin;
-      document.getElementById('min-fee').value = preset.minFee;
-      document.getElementById('labor-distribution').value = preset.distribution;
+      // 1. Time & Weight Inputs
+      const hrs = Math.max(0, parseFloat(document.getElementById('in-hours').value) || 0);
+      const mins = Math.max(0, parseFloat(document.getElementById('in-mins').value) || 0);
+      const totalPartHours = hrs + (mins / 60);
 
-      updateBufferLabel();
-      updateMarginLabel();
-      updateCalculations();
+      const grams = Math.max(0, parseFloat(document.getElementById('in-grams').value) || 0);
+      const spoolCost = Math.max(0, parseFloat(document.getElementById('in-spool-cost').value) || 0);
+      const bufferPct = Math.max(0, parseFloat(document.getElementById('in-buffer').value) || 0);
 
-      // Highlight active preset button style
-      ['snapmaker', 'proto', 'engineering', 'batch'].forEach(name => {
-        const btn = document.getElementById(`preset-${name}`);
-        if (name === key) {
-          btn.className = "px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white transition";
-        } else {
-          btn.className = "px-2.5 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition";
-        }
-      });
+      // 2. Machine & Electricity Inputs
+      const machineRate = Math.max(0, parseFloat(document.getElementById('in-machine-rate').value) || 0);
+      const watts = Math.max(0, parseFloat(document.getElementById('in-watts').value) || 0);
+      const kwhRate = Math.max(0, parseFloat(document.getElementById('in-kwh-rate').value) || 0);
 
-      showToast(`Preset "${key.toUpperCase()}" loaded`);
-    }
+      // 3. Labor Inputs
+      const prepMins = Math.max(0, parseFloat(document.getElementById('in-prep-mins').value) || 0);
+      const postMins = Math.max(0, parseFloat(document.getElementById('in-post-mins').value) || 0);
+      const laborRate = Math.max(0, parseFloat(document.getElementById('in-labor-rate').value) || 0);
 
-    function generateFormattedQuoteText(forWhatsApp = false) {
-      const q = currentQuote;
-      const divider = forWhatsApp ? "--------------------------------" : "----------------------------------------";
-      const bold = (txt) => forWhatsApp ? `*${txt}*` : txt;
+      // 4. Batch & Commercial
+      const qty = Math.max(1, parseInt(document.getElementById('in-batch-qty').value) || 1);
+      const distribution = document.getElementById('in-labor-distribution').value;
+      const marginPct = Math.max(0, parseFloat(document.getElementById('in-margin').value) || 0);
+      const minFloor = Math.max(0, parseFloat(document.getElementById('in-min-floor').value) || 0);
 
-      let lines = [];
-      lines.push(`${bold("🛠️ 3D PRINTING SERVICE QUOTE")}`);
-      lines.push(`Date: ${new Date().toLocaleDateString()}`);
-      lines.push(divider);
-      lines.push(`• Quantity: ${q.quantity} unit${q.quantity > 1 ? 's' : ''}`);
-      lines.push(`• Part Print Time: ${q.hours}h ${q.mins}m each`);
-      lines.push(`• Filament Used: ${q.gramsPerUnit}g per part (Spool: ${formatMoney(q.spoolCost)}/kg)`);
-      lines.push(`• Quality Buffer: ${q.bufferPercent}%`);
-      lines.push(divider);
-      lines.push(`${bold("Cost Breakdown:")}`);
-      lines.push(`- Materials: ${formatMoney(q.totalMaterial)}`);
-      lines.push(`- Machine Run & Power: ${formatMoney(q.totalMachine)}`);
-      lines.push(`- Prep, Slicing & Finishing: ${formatMoney(q.totalLabor)}`);
-      if (q.cadHours > 0) {
-        lines.push(`- CAD & Design Services (${q.cadHours}h): ${formatMoney(q.totalCAD)}`);
+      // Dynamic chip updates
+      document.getElementById('label-buffer-pct').textContent = `${bufferPct}%`;
+      document.getElementById('label-margin-pct').textContent = `${marginPct}%`;
+      document.getElementById('chip-part-runtime').textContent = `${hrs}h ${mins}m (${totalPartHours.toFixed(2)}h)`;
+      document.getElementById('label-gram-cost').textContent = `Base: ${cur}${(spoolCost / 1000).toFixed(2)} per gram`;
+
+      // --- CALCULATIONS ---
+      // A. Material cost
+      const baseCostPerGram = spoolCost / 1000;
+      const effectiveGramsPerPart = grams * (1 + (bufferPct / 100));
+      const totalMaterialCost = (effectiveGramsPerPart * baseCostPerGram) * qty;
+
+      // B. Machine Wear & Depreciation
+      const machineWearPerPart = totalPartHours * machineRate;
+      const totalMachineWear = machineWearPerPart * qty;
+
+      // C. Electricity
+      const kwhPerPart = (watts / 1000) * totalPartHours;
+      const totalEnergyCost = (kwhPerPart * kwhRate) * qty;
+      const totalKwh = kwhPerPart * qty;
+
+      // D. Labor Calculation
+      let totalLaborCost = 0;
+      let totalLaborMins = 0;
+
+      if (distribution === 'split') {
+        // Prep is performed once for the batch; post-processing happens per part
+        totalLaborMins = prepMins + (postMins * qty);
+        totalLaborCost = (totalLaborMins / 60) * laborRate;
+      } else {
+        // Full prep + post per unit
+        totalLaborMins = (prepMins + postMins) * qty;
+        totalLaborCost = (totalLaborMins / 60) * laborRate;
       }
-      lines.push(divider);
-      if (q.minFeeTriggered) {
-        lines.push(`ℹ️ Note: Standard studio minimum fee applied.`);
-      }
-      lines.push(`${bold(`TOTAL ESTIMATE:`)} ${bold(formatMoney(q.finalJobPrice))}`);
-      if (q.quantity > 1) {
-        lines.push(`${bold(`UNIT PRICE:`)} ${formatMoney(q.unitPrice)} each`);
-      }
-      lines.push(divider);
-      lines.push("Quote valid for 14 days. Turnaround confirmed upon order.");
 
-      return lines.join("\n");
+      // E. Aggregated Cost of Goods Sold (COGS)
+      const totalCOGS = totalMaterialCost + totalMachineWear + totalEnergyCost + totalLaborCost;
+
+      // F. Commercial Markup
+      const rawCalculatedJobTotal = totalCOGS * (1 + (marginPct / 100));
+      
+      // G. Minimum Price Floor Safeguard
+      let finalJobQuote = rawCalculatedJobTotal;
+      let floorTriggered = false;
+
+      if (finalJobQuote < minFloor && minFloor > 0) {
+        finalJobQuote = minFloor;
+        floorTriggered = true;
+      }
+
+      const unitPrice = finalJobQuote / qty;
+      const netProfit = finalJobQuote - totalCOGS;
+      const grossMarginPct = finalJobQuote > 0 ? (netProfit / finalJobQuote) * 100 : 0;
+      
+      // Effective Return per Labor Hour
+      const operatorHours = totalLaborMins / 60;
+      const effectiveHourly = operatorHours > 0 ? (netProfit + totalLaborCost) / operatorHours : laborRate;
+
+      // Save to state
+      calculationResults = {
+        currency: cur,
+        hrs, mins, totalPartHours,
+        grams, spoolCost, bufferPct, effectiveGramsPerPart,
+        machineRate, watts, kwhRate,
+        prepMins, postMins, totalLaborMins, laborRate,
+        qty, distribution, marginPct, minFloor,
+        totalMaterialCost, totalMachineWear, totalEnergyCost, totalKwh,
+        totalLaborCost, totalCOGS, rawCalculatedJobTotal,
+        finalJobQuote, unitPrice, netProfit, grossMarginPct,
+        effectiveHourly, floorTriggered
+      };
+
+      // --- SYNC UI ---
+      document.getElementById('hero-total-price').textContent = formatVal(finalJobQuote, cur);
+      document.getElementById('hero-unit-price').textContent = formatVal(unitPrice, cur);
+      document.getElementById('badge-batch-counter').textContent = `${qty} ${qty === 1 ? 'Unit' : 'Units'}`;
+
+      // Floor alert
+      const floorAlert = document.getElementById('alert-min-fee');
+      if (floorTriggered) {
+        floorAlert.classList.remove('hidden');
+        document.getElementById('label-min-fee-badge').textContent = `Min Floor: ${formatVal(minFloor, cur)}`;
+      } else {
+        floorAlert.classList.add('hidden');
+      }
+
+      // Cost breakdown labels
+      document.getElementById('res-grams-total').textContent = `${(grams * qty).toFixed(0)}g`;
+      document.getElementById('res-buffer-total').textContent = `${bufferPct}%`;
+      document.getElementById('val-mat-cost').textContent = formatVal(totalMaterialCost, cur);
+
+      document.getElementById('res-mach-hours').textContent = `${(totalPartHours * qty).toFixed(2)}h`;
+      document.getElementById('val-mach-cost').textContent = formatVal(totalMachineWear, cur);
+
+      document.getElementById('res-power-kwh').textContent = `${totalKwh.toFixed(2)} kWh`;
+      document.getElementById('val-power-cost').textContent = formatVal(totalEnergyCost, cur);
+
+      document.getElementById('res-labor-total-mins').textContent = `${totalLaborMins.toFixed(0)}m total`;
+      document.getElementById('val-labor-cost').textContent = formatVal(totalLaborCost, cur);
+
+      document.getElementById('val-cogs-cost').textContent = formatVal(totalCOGS, cur);
+      document.getElementById('res-markup-pct').textContent = `${marginPct}%`;
+      document.getElementById('val-profit-cost').textContent = `+${formatVal(netProfit, cur)}`;
+
+      // KPI badges
+      document.getElementById('kpi-net-profit').textContent = formatVal(netProfit, cur);
+      document.getElementById('kpi-effective-hourly').textContent = `${formatVal(effectiveHourly, cur)}/h`;
+      document.getElementById('res-gross-margin-pct').textContent = `Gross Margin: ${grossMarginPct.toFixed(1)}%`;
+
+      // Distribution Bar widths
+      if (finalJobQuote > 0) {
+        const matPct = (totalMaterialCost / finalJobQuote) * 100;
+        const machPct = ((totalMachineWear + totalEnergyCost) / finalJobQuote) * 100;
+        const labPct = (totalLaborCost / finalJobQuote) * 100;
+        const profPct = Math.max(0, 100 - (matPct + machPct + labPct));
+
+        document.getElementById('bar-material').style.width = `${matPct}%`;
+        document.getElementById('bar-machine').style.width = `${machPct}%`;
+        document.getElementById('bar-labor').style.width = `${labPct}%`;
+        document.getElementById('bar-profit').style.width = `${profPct}%`;
+      }
     }
 
-    function copyQuoteForClient() {
-      const text = generateFormattedQuoteText(false);
-      const textArea = document.getElementById('hidden-copy-area');
-      textArea.value = text;
-      textArea.select();
+    function generateFormattedQuote(isWhatsApp = false) {
+      const c = calculationResults;
+      const b = (txt) => isWhatsApp ? `*${txt}*` : txt;
+      const sep = isWhatsApp ? "━━━━━━━━━━━━━━━━━━━━" : "------------------------------------------";
+
+      let out = [];
+      out.push(`⚡ ${b("3D PRINT PRODUCTION QUOTE")}`);
+      out.push(`Date: ${new Date().toLocaleDateString()}`);
+      out.push(sep);
+      out.push(`• Quantity: ${c.qty} unit${c.qty > 1 ? 's' : ''}`);
+      out.push(`• Runtime: ${c.hrs}h ${c.mins}m per part (${(c.totalPartHours * c.qty).toFixed(2)}h total)`);
+      out.push(`• Material Weight: ${c.grams}g/unit (+${c.bufferPct}% fail/purge buffer)`);
+      out.push(sep);
+      out.push(`${b("Production Cost Breakdown:")}`);
+      out.push(`  - Materials & Consumables: ${formatVal(c.totalMaterialCost)}`);
+      out.push(`  - Machine Wear & Energy: ${formatVal(c.totalMachineWear + c.totalEnergyCost)}`);
+      out.push(`  - Active Labor & Finishing: ${formatVal(c.totalLaborCost)}`);
+      out.push(sep);
+      if (c.floorTriggered) {
+        out.push(`ℹ️ Studio minimum order fee applied (${formatVal(c.minFloor)}).`);
+      }
+      out.push(`${b("TOTAL ESTIMATE:")} ${b(formatVal(c.finalJobQuote))}`);
+      if (c.qty > 1) {
+        out.push(`${b("UNIT PRICE:")} ${formatVal(c.unitPrice)} each`);
+      }
+      out.push(sep);
+      out.push(`✓ Quality inspected & deburred.`);
+      out.push(`✓ Valid for 14 calendar days.`);
+
+      return out.join("\n");
+    }
+
+    function copyQuoteToClipboard() {
+      const quote = generateFormattedQuote(false);
+      const scratchpad = document.getElementById('copy-scratchpad');
+      scratchpad.value = quote;
+      scratchpad.select();
       
       try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-          showToast("Client Quote copied to clipboard!");
-          const btn = document.getElementById('copy-btn-text');
-          btn.textContent = "Copied!";
-          setTimeout(() => { btn.textContent = "Copy Client Quote"; }, 2000);
+        const success = document.execCommand('copy');
+        if (success) {
+          showToast("Itemized client quote copied!");
+          const label = document.getElementById('btn-copy-label');
+          label.textContent = "Quote Copied to Clipboard!";
+          setTimeout(() => { label.textContent = "Copy Itemized Client Quote"; }, 2000);
         } else {
-          showToast("Failed to copy. Please allow clipboard permissions.");
+          showToast("Could not copy automatically. Check permissions.");
         }
       } catch (err) {
-        showToast("Error copying quote.");
+        showToast("Clipboard access failed.");
       }
     }
 
-    function shareWhatsApp() {
-      const text = generateFormattedQuoteText(true);
-      const encoded = encodeURIComponent(text);
-      const url = `https://wa.me/?text=${encoded}`;
-      window.open(url, '_blank');
+    function shareViaWhatsApp() {
+      const quote = generateFormattedQuote(true);
+      const encoded = encodeURIComponent(quote);
+      window.open(`https://wa.me/?text=${encoded}`, '_blank');
     }
 
-    function showToast(message) {
+    function showToast(msg) {
       const toast = document.getElementById('toast');
-      const msg = document.getElementById('toast-message');
-      msg.textContent = message;
-      toast.classList.remove('translate-y-20', 'opacity-0');
+      document.getElementById('toast-text').textContent = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
       toast.classList.add('translate-y-0', 'opacity-100');
       setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-20', 'opacity-0');
+        toast.classList.add('translate-y-24', 'opacity-0');
       }, 2500);
     }
 
     function toggleTheme() {
-      const html = document.documentElement;
-      const sunIcon = document.getElementById('theme-icon-sun');
-      const moonIcon = document.getElementById('theme-icon-moon');
-      
-      if (html.classList.contains('dark')) {
-        html.classList.remove('dark');
-        sunIcon.classList.add('hidden');
-        moonIcon.classList.remove('hidden');
-      } else {
-        html.classList.add('dark');
-        sunIcon.classList.remove('hidden');
-        moonIcon.classList.add('hidden');
-      }
+      const isDark = document.documentElement.classList.toggle('dark');
+      document.getElementById('theme-sun').classList.toggle('hidden', isDark);
+      document.getElementById('theme-moon').classList.toggle('hidden', !isDark);
     }
 
+    // Initialize application on page load
     window.addEventListener('DOMContentLoaded', () => {
-      // Respect system color scheme preference
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-        document.getElementById('theme-icon-sun').classList.remove('hidden');
-        document.getElementById('theme-icon-moon').classList.add('hidden');
-      }
-      updateBufferLabel();
-      updateMarginLabel();
-      updateCalculations();
+      updateAll();
     });
   </script>
 </body>
